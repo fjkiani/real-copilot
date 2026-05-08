@@ -1,0 +1,126 @@
+# FDE II (GenAI) INTERVIEW REFERENCE — Fahad Kiani
+
+---
+
+## 1. THE INTERVIEW
+
+| Field | Detail |
+|---|---|
+| Date | May 19, Block B |
+| Time | 1:00 – 3:15 PM ET |
+| Format | Virtual, Google Meet |
+| Round 1 | RRK — 60 min (Role-Related Knowledge) |
+| Round 2 | Coding — 60 min |
+| Coding platform | Static (no execution, no AI tools) |
+| AI tools | NOT allowed during interview |
+
+---
+
+## 2. RRK SUB-TOPICS & KEY POINTS
+
+### GenAI Concepts
+RAG = retrieval (embed query → ANN search in Vertex AI Matching Engine) + augmentation (inject top-k chunks into prompt) + generation (Gemini). Fine-tuning is for style/format/domain vocabulary, NOT for injecting new facts — use RAG for facts. Prompting (few-shot, chain-of-thought, ReAct) is the first lever; fine-tune only when prompting plateaus. ReAct agents interleave Thought→Action→Observation loops; ADK (Agent Development Kit) is Google's framework for building multi-agent systems with tool use and MCP (Model Context Protocol) for standardized tool interfaces. LLM serving metrics: TTFT (time to first token), TBT (time between tokens), throughput (tokens/sec), p99 latency. Grounding = connecting model output to verifiable sources (Google Search grounding in Vertex AI).
+
+### System Design
+Framework: Clarify requirements → High-level design → Deep dive on critical path → Failure modes & mitigations. Always ask: scale (QPS, data volume), latency SLA, consistency requirements. Top 5 designs to know cold: (1) RAG pipeline with Vertex AI Matching Engine + Cloud Run + Gemini, (2) real-time event processing with Pub/Sub + Dataflow + BigQuery, (3) multi-agent orchestration with ADK + Agent Engine, (4) document processing pipeline with Document AI + Cloud Storage + BigQuery, (5) ML feature store with Vertex AI Feature Store + BigQuery. For every design: name the failure mode (embedding drift, context window overflow, cold start latency) and the mitigation.
+
+### Consulting
+Framework: Discover → Diagnose → Recommend → Validate. Never accept the customer's stated problem as the real problem — probe for root cause. Discover: ask what success looks like, who the stakeholders are, what's been tried. Diagnose: quantify the gap (latency, accuracy, cost). Recommend: give 2–3 options with trade-offs, not one answer. Validate: define the metric that proves it worked. Key FDE skill: translating vague business pain ("our AI isn't working") into a specific technical hypothesis ("hallucination rate >15% on long-context queries due to missing retrieval step").
+
+### Troubleshooting
+Framework: Clarify the symptom (exact error, frequency, scope) → Generate hypotheses (ranked by likelihood) → Isolate (binary search the stack) → Fix and verify. GenAI-specific failure modes: (1) hallucination — missing grounding or retrieval, (2) context window overflow — chunk size too large or too many retrieved docs, (3) latency spikes — cold start on Cloud Run, embedding model bottleneck, (4) embedding drift — model updated but index not rebuilt, (5) tool call failures in agents — malformed JSON schema, missing auth. Always ask: "Is this reproducible? What changed recently?"
+
+### App Development
+Lifecycle: Design (requirements, architecture diagram, API contracts) → Build (Cloud Run for serving, ADK for agent logic, Vertex AI for model calls) → Test (unit tests for tool functions, integration tests for agent flows, eval harness for LLM output quality) → Deploy (Cloud Run with traffic splitting, Cloud Build CI/CD) → Demo (show the happy path, then show a failure and how the system handles it). FDE-specific: customers care about demo quality — build a working prototype fast, then harden. Use Vertex AI Studio for rapid prototyping before writing code.
+
+### Cloud Technology
+Know these products cold — never say "a service," say the name:
+
+| Product | What it does |
+|---|---|
+| Gemini (1.5 Pro/Flash) | Foundation model, multimodal, 1M token context |
+| Vertex AI | Managed ML platform — training, serving, pipelines |
+| ADK | Agent Development Kit — multi-agent framework |
+| Agent Engine | Managed runtime for deploying ADK agents |
+| Matching Engine | Managed ANN vector search (HNSW/ScaNN) |
+| Cloud Run | Serverless containers, scales to zero |
+| BigQuery | Serverless data warehouse, SQL + ML |
+| Pub/Sub | Managed message queue, async decoupling |
+| Document AI | OCR + structured extraction from PDFs/forms |
+| VPC Service Controls | Data exfiltration prevention, perimeter security |
+| Cloud Build | CI/CD pipelines |
+| Vertex AI Feature Store | Managed feature serving for ML |
+| Vertex AI Pipelines | Kubeflow-based ML workflow orchestration |
+
+---
+
+## 3. CODING PATTERNS
+
+| Pattern | Key Insight | Time | Space |
+|---|---|---|---|
+| Arrays/Hashing | Trade space for O(1) lookup; use dict/set | O(n) | O(n) |
+| Sliding Window | Expand right, shrink left when constraint violated | O(n) | O(1) or O(k) |
+| Two Pointers | Sorted array or palindrome; move inward/outward | O(n) | O(1) |
+| Binary Search | Sorted input or monotonic condition → halve search space | O(log n) | O(1) |
+| Trees/Graphs | DFS for path/cycle, BFS for shortest path, topological sort for DAG | O(V+E) | O(V) |
+| Dynamic Programming | Overlapping subproblems → memoize; define state carefully | O(n²) typical | O(n) with rolling |
+| Heap | K-th element or streaming min/max → use heapq | O(n log k) | O(k) |
+| Stack | Matching brackets, next greater element, monotonic stack | O(n) | O(n) |
+| Linked List | Fast/slow pointers for cycle; dummy head for edge cases | O(n) | O(1) |
+| Advanced | Trie for prefix, Union-Find for connectivity, Segment Tree for range queries | varies | varies |
+
+---
+
+## 4. THE 5-STEP CODING PROTOCOL
+
+1. **Clarify** — Repeat the problem in one sentence, confirm constraints (input size, edge cases, return type). Ask one clarifying question if needed.
+2. **Pattern** — State the pattern out loud: "This is a sliding window problem."
+3. **Algorithm** — Describe the approach in 2 sentences before writing any code.
+4. **Code** — Write clean, typed Python. Use meaningful variable names. No pseudocode.
+5. **Verify** — Trace through one example by hand. State time and space complexity. Mention one optimization or production consideration.
+
+---
+
+## 5. KEY PHRASES THAT SIGNAL STRONG ANSWERS
+
+- "The failure mode I'd watch for here is..."
+- "I'd use Vertex AI Matching Engine rather than building ANN from scratch because..."
+- "Before I design this, let me confirm the latency SLA and QPS target."
+- "Fine-tuning is the wrong lever here — the issue is retrieval quality, not generation style."
+- "I'd instrument this with Cloud Monitoring and set an alert on p99 TTFT."
+- "The trade-off between Gemini 1.5 Pro and Flash here is cost vs. context window."
+- "In a real deployment I'd add VPC Service Controls to prevent data exfiltration."
+- "The customer's stated problem is X, but the root cause is likely Y."
+- "I'd validate this with an eval harness measuring answer faithfulness and context recall."
+- "This pattern is O(n log k) — the heap keeps only k elements in memory at any time."
+
+---
+
+## 6. PHRASES TO NEVER SAY
+
+- "It depends" (without immediately saying what it depends on and giving a recommendation)
+- "You could use a vector database" (say "Vertex AI Matching Engine")
+- "A managed service would handle that" (name the service)
+- "I'm not sure, but..." (say "Assumption: X" and commit)
+- "Does that make sense?" (you're the expert — don't seek validation)
+
+---
+
+## 7. GCP PRODUCTS QUICK REFERENCE
+
+| Product | Primary Use Case | Say It When... |
+|---|---|---|
+| Gemini 1.5 Pro | Long-context reasoning, multimodal, complex tasks | Need >128K context or vision input |
+| Gemini 1.5 Flash | Low-latency, high-volume, cost-sensitive | Need fast responses at scale |
+| Vertex AI Matching Engine | ANN vector search for RAG retrieval | Any semantic search or RAG question |
+| ADK | Building multi-agent systems with tool use | Agent orchestration, MCP integration |
+| Agent Engine | Deploying and scaling ADK agents in prod | "Where does the agent runtime live?" |
+| Cloud Run | Serving APIs, microservices, agent endpoints | Stateless compute, scale-to-zero |
+| BigQuery | Analytics, feature engineering, audit logs | Data warehouse, SQL on large datasets |
+| Pub/Sub | Async event streaming, decoupling services | Real-time pipelines, event-driven arch |
+| Document AI | PDF/form extraction, OCR | Unstructured document processing |
+| VPC Service Controls | Data perimeter, exfiltration prevention | Enterprise security, compliance |
+| Vertex AI Pipelines | ML workflow orchestration | Training pipelines, batch inference |
+| Vertex AI Feature Store | Low-latency feature serving | Online ML inference with shared features |
+| Cloud Build | CI/CD for containers and Cloud Run | Deployment automation |
+| Vertex AI Studio | Rapid prototyping with Gemini | "How would you prototype this quickly?" |
