@@ -1,8 +1,8 @@
 {
-  "name": "natively",
+  "name": "fde-copilot",
   "version": "2.6.0",
   "main": "dist-electron/electron/main.js",
-  "description": "Natively is a meeting notes app that uses AI to generate notes from your meetings.",
+  "description": "Real-time AI co-pilot for Google Cloud FDE II interviews",
   "scripts": {
     "clean": "rimraf dist dist-electron",
     "dev": "vite",
@@ -23,9 +23,9 @@
   },
   "build": {
     "generateUpdatesFilesForAllChannels": true,
-    "appId": "com.electron.meeting-notes",
+    "appId": "com.fjkiani.fde-copilot",
     "afterPack": "./scripts/ad-hoc-sign.js",
-    "productName": "Natively",
+    "productName": "FDE Copilot",
     "files": [
       "dist",
       "dist-electron",
@@ -80,8 +80,8 @@
       "identity": null,
       "hardenedRuntime": false,
       "extendInfo": {
-        "NSScreenCaptureUsageDescription": "Natively needs Screen Recording permission to capture system audio for meeting transcription.",
-        "NSMicrophoneUsageDescription": "Natively needs microphone access to transcribe your voice during meetings."
+        "NSScreenCaptureUsageDescription": "FDE Copilot needs Screen Recording permission to capture system audio for interview transcription.",
+        "NSMicrophoneUsageDescription": "FDE Copilot needs microphone access to transcribe your voice during interviews."
       }
     },
     "win": {
@@ -131,8 +131,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "Natively-AI-assistant",
-        "repo": "natively-cluely-ai-assistant",
+        "owner": "fjkiani",
+        "repo": "real-copilot",
         "releaseType": "release"
       }
     ]

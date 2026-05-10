@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# Google FDE II Co-Pilot — macOS Apple Silicon Setup Script
-# Forks Natively AI assistant and configures it for the
+# FDE Copilot — macOS Apple Silicon Setup Script
+# Clones fjkiani/real-copilot and configures it for the
 # Google Cloud FDE II GenAI interview (May 19, Block B)
 # ============================================================
 set -e
@@ -20,11 +20,11 @@ err()  { echo -e "${RED}❌ $1${NC}"; exit 1; }
 hdr()  { echo -e "\n${BLUE}${BOLD}══ $1 ══${NC}"; }
 
 REPO_DIR="$HOME/fde-copilot"
-REPO_URL="https://github.com/Natively-AI-assistant/natively-cluely-ai-assistant.git"
+REPO_URL="https://github.com/fjkiani/real-copilot.git"
 
 echo -e "${BOLD}"
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║   Google FDE II Co-Pilot — Setup (Apple Silicon)    ║"
+echo "║       FDE Copilot — Setup (Apple Silicon)            ║"
 echo "║   Interview: May 19, Block B (1–3:15 PM ET)         ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo -e "${NC}"
@@ -95,13 +95,13 @@ fi
 source "$HOME/.cargo/env" 2>/dev/null || true
 
 # ── Step 5: Clone repo ────────────────────────────────────────
-hdr "Step 5: Clone Natively repo"
+hdr "Step 5: Clone FDE Copilot repo (fjkiani/real-copilot)"
 if [ -d "$REPO_DIR/.git" ]; then
   ok "Repo already cloned at $REPO_DIR"
   info "Pulling latest changes..."
   git -C "$REPO_DIR" pull --ff-only || info "Could not pull (local changes?). Continuing."
 else
-  info "Cloning Natively AI assistant..."
+  info "Cloning FDE Copilot from fjkiani/real-copilot..."
   git clone "$REPO_URL" "$REPO_DIR"
   ok "Repo cloned to $REPO_DIR"
 fi
@@ -136,7 +136,7 @@ if [ -f ".env" ]; then
   info "Edit $REPO_DIR/.env to update your API key"
 else
   cat > .env << 'ENVEOF'
-# ── Google FDE II Co-Pilot Configuration ──────────────────────
+# ── FDE Copilot Configuration ─────────────────────────────────
 # Fill in your Groq API key below (get one free at console.groq.com)
 
 GROQ_API_KEY=PASTE_YOUR_GROQ_KEY_HERE
@@ -168,21 +168,31 @@ hdr "Step 9: Copy FDE reference files"
 FDE_ASSETS_DIR="$REPO_DIR/fde-assets"
 mkdir -p "$FDE_ASSETS_DIR"
 
-# Copy from wherever this script lives (assume same dir as fde_reference_context.txt)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Source files live inside the cloned repo under fde-copilot-config/
+# This is the canonical location after cloning fjkiani/real-copilot.
+FDE_CONFIG_DIR="$REPO_DIR/fde-copilot-config"
 
 for f in fde_system_prompt.txt fde_reference_context.txt; do
-  if [ -f "$SCRIPT_DIR/$f" ]; then
-    cp "$SCRIPT_DIR/$f" "$FDE_ASSETS_DIR/$f"
-    ok "Copied $f to $FDE_ASSETS_DIR/"
+  if [ -f "$FDE_CONFIG_DIR/$f" ]; then
+    cp "$FDE_CONFIG_DIR/$f" "$FDE_ASSETS_DIR/$f"
+    ok "Copied $f → $FDE_ASSETS_DIR/$f"
   else
-    info "$f not found in $SCRIPT_DIR — download it from your Biomni results"
+    info "$f not found in $FDE_CONFIG_DIR — skipping (add it to fde-copilot-config/ and re-run)"
   fi
 done
 
+# Also copy build.sh to repo root for convenience
+if [ -f "$FDE_CONFIG_DIR/build.sh" ]; then
+  chmod +x "$FDE_CONFIG_DIR/build.sh"
+  ok "build.sh is executable at $FDE_CONFIG_DIR/build.sh"
+fi
+
 # ── Step 10: Fix macOS "App is Damaged" issue ─────────────────
 hdr "Step 10: macOS security fix"
-if [ -d "/Applications/Natively.app" ]; then
+if [ -d "/Applications/FDE Copilot.app" ]; then
+  info "Removing macOS quarantine flag from FDE Copilot.app..."
+  xattr -cr "/Applications/FDE Copilot.app" 2>/dev/null && ok "Quarantine flag removed" || info "No quarantine flag found"
+elif [ -d "/Applications/Natively.app" ]; then
   info "Removing macOS quarantine flag from Natively.app..."
   xattr -cr /Applications/Natively.app 2>/dev/null && ok "Quarantine flag removed" || info "No quarantine flag found"
 fi
@@ -200,23 +210,26 @@ echo -e "  1. ${YELLOW}Paste your Groq API key:${NC}"
 echo -e "     nano $REPO_DIR/.env"
 echo -e "     (Get free key: https://console.groq.com/keys)"
 echo ""
-echo -e "  2. ${YELLOW}Launch the app:${NC}"
-echo -e "     cd $REPO_DIR && npm start"
+echo -e "  2. ${YELLOW}Launch the app (dev mode):${NC}"
+echo -e "     bash $REPO_DIR/fde-copilot-config/build.sh dev"
 echo ""
-echo -e "  3. ${YELLOW}In the app (Settings → AI Providers):${NC}"
+echo -e "  3. ${YELLOW}Run E2E tests:${NC}"
+echo -e "     bash $REPO_DIR/fde-copilot-config/build.sh test"
+echo ""
+echo -e "  4. ${YELLOW}In the app (Settings → AI Providers):${NC}"
 echo -e "     • Select Groq → paste your API key → Save"
 echo -e "     • Model: llama-3.3-70b-versatile"
 echo ""
-echo -e "  4. ${YELLOW}Load FDE context (Settings → Custom Context):${NC}"
+echo -e "  5. ${YELLOW}Load FDE context (Settings → Custom Context):${NC}"
 echo -e "     • Paste contents of: $FDE_ASSETS_DIR/fde_system_prompt.txt"
 echo ""
-echo -e "  5. ${YELLOW}Load reference file (Settings → Reference Files):${NC}"
+echo -e "  6. ${YELLOW}Load reference file (Settings → Reference Files):${NC}"
 echo -e "     • Upload: $FDE_ASSETS_DIR/fde_reference_context.txt"
 echo ""
-echo -e "  6. ${YELLOW}Select persona mode:${NC}"
+echo -e "  7. ${YELLOW}Select persona mode:${NC}"
 echo -e "     • Modes → Technical Interview (closest to FDE mode)"
 echo ""
-echo -e "  7. ${YELLOW}Test before May 19:${NC}"
+echo -e "  8. ${YELLOW}Test before May 19:${NC}"
 echo -e "     • Cmd+Shift+Enter → screenshot a question → verify response"
 echo -e "     • Cmd+H → hide overlay → verify it disappears from screen share"
 echo ""
