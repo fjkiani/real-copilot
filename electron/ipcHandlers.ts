@@ -3359,5 +3359,147 @@ export function initializeIpcHandlers(appState: AppState): void {
       return { error: e?.message || 'failed to rotate token' };
     }
   });
-}
 
+  // -----------------------------------------------------------------------
+  // Alpha Interview Copilot — 5 IPC handlers
+  // alpha:preflight  → Gemini JSON (one-shot)
+  // alpha:conductor  → Groq JSON (one-shot)
+  // alpha:stream-answer  → Gemini streaming tokens
+  // alpha:stream-code    → Groq streaming tokens
+  // alpha:stream-rescue  → Claude streaming tokens
+  // -----------------------------------------------------------------------
+
+  // Monotonic stream IDs — one counter per streaming agent.
+  // Any in-flight iteration bails when it detects a newer stream has taken over.
+  let _alphaAnswerStreamId = 0;
+  let _alphaCodeStreamId   = 0;
+  let _alphaRescueStreamId = 0;
+
+  safeHandle('alpha:preflight', async (_event, context: string) => {
+    try {
+      const llmHelper = appState.processingHelper?.getLLMHelper?.();
+      if (!llmHelper) return { error: 'LLMHelper not ready' };
+
+      const geminiClient = (llmHelper as any).client as import('@google/genai').GoogleGenAI | null;
+      if (!geminiClient) return { error: 'Gemini client not initialized — add a Gemini API key in Settings' };
+
+      const { runPreflight } = await import('./llm/AlphaAgents');
+      const result = await runPreflight(geminiClient, context);
+      return { ok: true, ...result };
+    } catch (e: any) {
+      console.error('[IPC] alpha:preflight error:', e);
+      return { error: e?.message || 'preflight failed' };
+    }
+  });
+
+  safeHandle('alpha:conductor', async (_event, session: import('../src/lib/session').SessionState, utterance: string) => {
+    try {
+      const llmHelper = appState.processingHelper?.getLLMHelper?.();
+      if (!llmHelper) return { error: 'LLMHelper not ready' };
+
+      const groqClient = llmHelper.getGroqClient();
+      if (!groqClient) return { error: 'Groq client not initialized — add a Groq API key in Settings' };
+
+      const { runConductor } = await import('./llm/AlphaAgents');
+      const result = await runConductor(groqClient, session, utterance);
+      return { ok: true, ...result };
+    } catch (e: any) {
+      console.error('[IPC] alpha:conductor error:', e);
+      return { error: e?.message || 'conductor failed' };
+    }
+  });
+
+  safeHandle('alpha:stream-answer', async (event, session: import('../src/lib/session').SessionState, utterance: string, conductorPlan: string, matchedQuestion: { question: string; skeleton: string; keyMechanism: string } | null) => {
+    const myStreamId = ++_alphaAnswerStreamId;
+    try {
+      const llmHelper = appState.processingHelper?.getLLMHelper?.();
+      if (!llmHelper) { event.sender.send('alpha:answer-error', 'LLMHelper not ready'); return null; }
+
+      const geminiClient = (llmHelper as any).client as import('@google/genai').GoogleGenAI | null;
+      if (!geminiClient) { event.sender.send('alpha:answer-error', 'Gemini client not initialized'); return null; }
+
+      const { streamAnswer } = await import('./llm/AlphaAgents');
+
+      for await (const token of streamAnswer(geminiClient, session, utterance, conductorPlan, matchedQuestion)) {
+        if (_alphaAnswerStreamId !== myStreamId) {
+          console.log(`[IPC] alpha:stream-answer ${myStreamId} superseded by ${_alphaAnswerStreamId}, stopping.`);
+          return null;
+        }
+        event.sender.send('alpha:answer-token', token);
+      }
+
+      if (_alphaAnswerStreamId === myStreamId) {
+        event.sender.send('alpha:answer-done');
+      }
+    } catch (e: any) {
+      console.error('[IPC] alpha:stream-answer error:', e);
+      if (_alphaAnswerStreamId === myStreamId) {
+        event.sender.send('alpha:answer-error', e?.message || 'stream-answer failed');
+      }
+    }
+    return null;
+  });
+
+  safeHandle('alpha:stream-code', async (event, session: import('../src/lib/session').SessionState, utterance: string, conductorPlan: string) => {
+    const myStreamId = ++_alphaCodeStreamId;
+    try {
+      const llmHelper = appState.processingHelper?.getLLMHelper?.();
+      if (!llmHelper) { event.sender.send('alpha:code-error', 'LLMHelper not ready'); return null; }
+
+      const groqClient = llmHelper.getGroqClient();
+      if (!groqClient) { event.sender.send('alpha:code-error', 'Groq client not initialized'); return null; }
+
+      const { streamCode } = await import('./llm/AlphaAgents');
+
+      for await (const token of streamCode(groqClient, session, utterance, conductorPlan)) {
+        if (_alphaCodeStreamId !== myStreamId) {
+          console.log(`[IPC] alpha:stream-code ${myStreamId} superseded by ${_alphaCodeStreamId}, stopping.`);
+          return null;
+        }
+        event.sender.send('alpha:code-token', token);
+      }
+
+      if (_alphaCodeStreamId === myStreamId) {
+        event.sender.send('alpha:code-done');
+      }
+    } catch (e: any) {
+      console.error('[IPC] alpha:stream-code error:', e);
+      if (_alphaCodeStreamId === myStreamId) {
+        event.sender.send('alpha:code-error', e?.message || 'stream-code failed');
+      }
+    }
+    return null;
+  });
+
+  safeHandle('alpha:stream-rescue', async (event, session: import('../src/lib/session').SessionState, utterance: string, conductorPlan: string, matchedQuestion: { question: string; skeleton: string; keyMechanism: string } | null) => {
+    const myStreamId = ++_alphaRescueStreamId;
+    try {
+      const llmHelper = appState.processingHelper?.getLLMHelper?.();
+      if (!llmHelper) { event.sender.send('alpha:rescue-error', 'LLMHelper not ready'); return null; }
+
+      const claudeClient = llmHelper.getClaudeClient();
+      if (!claudeClient) { event.sender.send('alpha:rescue-error', 'Claude client not initialized — add a Claude API key in Settings'); return null; }
+
+      const { streamRescue } = await import('./llm/AlphaAgents');
+
+      for await (const token of streamRescue(claudeClient, session, utterance, conductorPlan, matchedQuestion)) {
+        if (_alphaRescueStreamId !== myStreamId) {
+          console.log(`[IPC] alpha:stream-rescue ${myStreamId} superseded by ${_alphaRescueStreamId}, stopping.`);
+          return null;
+        }
+        event.sender.send('alpha:rescue-token', token);
+      }
+
+      if (_alphaRescueStreamId === myStreamId) {
+        event.sender.send('alpha:rescue-done');
+      }
+    } catch (e: any) {
+      console.error('[IPC] alpha:stream-rescue error:', e);
+      if (_alphaRescueStreamId === myStreamId) {
+        event.sender.send('alpha:rescue-error', e?.message || 'stream-rescue failed');
+      }
+    }
+    return null;
+  });
+
+}

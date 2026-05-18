@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react" // forcing refresh
 import { QueryClient, QueryClientProvider } from "react-query"
 import { ToastProvider, ToastViewport } from "./components/ui/toast"
 import NativelyInterface from "./components/NativelyInterface"
+import InterviewHUD from "./components/InterviewHUD"
 import SettingsPopup from "./components/SettingsPopup" // Keeping for legacy/specific window support if needed
 import Launcher from "./components/Launcher"
 import ModelSelectorWindow from "./components/ModelSelectorWindow"
@@ -467,6 +468,7 @@ const App: React.FC = () => {
                   onEndMeeting={handleEndMeeting}
                   overlayOpacity={overlayOpacity}
                 />
+                <InterviewHUD />
               </div>
               <ToastViewport />
             </ToastProvider>

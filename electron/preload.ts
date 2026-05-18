@@ -1294,3 +1294,88 @@ contextBridge.exposeInMainWorld("electronAPI", {
     _verbose = enabled;
   });
 })()
+
+// ── Alpha Interview Copilot API ───────────────────────────────────────────────
+// Exposed as window.alphaAPI — separate namespace from electronAPI to avoid
+// polluting the existing API surface.
+
+import type { SessionState } from '../src/lib/session';
+
+contextBridge.exposeInMainWorld('alphaAPI', {
+  // One-shot JSON calls
+  preflight: (context: string) =>
+    ipcRenderer.invoke('alpha:preflight', context),
+
+  conductor: (session: SessionState, utterance: string) =>
+    ipcRenderer.invoke('alpha:conductor', session, utterance),
+
+  // Streaming — invoke starts the stream; tokens arrive via on* listeners
+  streamAnswer: (
+    session: SessionState,
+    utterance: string,
+    conductorPlan: string,
+    matchedQuestion: { question: string; skeleton: string; keyMechanism: string } | null
+  ) => ipcRenderer.invoke('alpha:stream-answer', session, utterance, conductorPlan, matchedQuestion),
+
+  streamCode: (session: SessionState, utterance: string, conductorPlan: string) =>
+    ipcRenderer.invoke('alpha:stream-code', session, utterance, conductorPlan),
+
+  streamRescue: (
+    session: SessionState,
+    utterance: string,
+    conductorPlan: string,
+    matchedQuestion: { question: string; skeleton: string; keyMechanism: string } | null
+  ) => ipcRenderer.invoke('alpha:stream-rescue', session, utterance, conductorPlan, matchedQuestion),
+
+  // Answer stream listeners
+  onAnswerToken: (cb: (token: string) => void) => {
+    const sub = (_: Electron.IpcRendererEvent, token: string) => cb(token);
+    ipcRenderer.on('alpha:answer-token', sub);
+    return () => ipcRenderer.removeListener('alpha:answer-token', sub);
+  },
+  onAnswerDone: (cb: () => void) => {
+    const sub = () => cb();
+    ipcRenderer.on('alpha:answer-done', sub);
+    return () => ipcRenderer.removeListener('alpha:answer-done', sub);
+  },
+  onAnswerError: (cb: (err: string) => void) => {
+    const sub = (_: Electron.IpcRendererEvent, err: string) => cb(err);
+    ipcRenderer.on('alpha:answer-error', sub);
+    return () => ipcRenderer.removeListener('alpha:answer-error', sub);
+  },
+
+  // Code stream listeners
+  onCodeToken: (cb: (token: string) => void) => {
+    const sub = (_: Electron.IpcRendererEvent, token: string) => cb(token);
+    ipcRenderer.on('alpha:code-token', sub);
+    return () => ipcRenderer.removeListener('alpha:code-token', sub);
+  },
+  onCodeDone: (cb: () => void) => {
+    const sub = () => cb();
+    ipcRenderer.on('alpha:code-done', sub);
+    return () => ipcRenderer.removeListener('alpha:code-done', sub);
+  },
+  onCodeError: (cb: (err: string) => void) => {
+    const sub = (_: Electron.IpcRendererEvent, err: string) => cb(err);
+    ipcRenderer.on('alpha:code-error', sub);
+    return () => ipcRenderer.removeListener('alpha:code-error', sub);
+  },
+
+  // Rescue stream listeners
+  onRescueToken: (cb: (token: string) => void) => {
+    const sub = (_: Electron.IpcRendererEvent, token: string) => cb(token);
+    ipcRenderer.on('alpha:rescue-token', sub);
+    return () => ipcRenderer.removeListener('alpha:rescue-token', sub);
+  },
+  onRescueDone: (cb: () => void) => {
+    const sub = () => cb();
+    ipcRenderer.on('alpha:rescue-done', sub);
+    return () => ipcRenderer.removeListener('alpha:rescue-done', sub);
+  },
+  onRescueError: (cb: (err: string) => void) => {
+    const sub = (_: Electron.IpcRendererEvent, err: string) => cb(err);
+    ipcRenderer.on('alpha:rescue-error', sub);
+    return () => ipcRenderer.removeListener('alpha:rescue-error', sub);
+  },
+});
+

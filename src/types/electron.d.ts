@@ -398,8 +398,72 @@ export interface PhoneMirrorInfo {
   clients: number;
 }
 
+
+// ── Alpha Interview Copilot API types ────────────────────────────────────────
+
+import type { SessionState } from '../lib/session';
+
+export interface AlphaAPI {
+  // One-shot JSON calls
+  preflight: (context: string) => Promise<{
+    ok?: boolean;
+    briefing?: string;
+    questionBank?: unknown[];
+    phasePlan?: unknown[];
+    error?: string;
+  }>;
+
+  conductor: (session: SessionState, utterance: string) => Promise<{
+    ok?: boolean;
+    phase?: string;
+    phaseChanged?: boolean;
+    matchedQuestionIndex?: number | null;
+    agentType?: string;
+    conductorPlan?: string;
+    urgency?: string;
+    error?: string;
+  }>;
+
+  // Streaming invocations (tokens arrive via on* listeners)
+  streamAnswer: (
+    session: SessionState,
+    utterance: string,
+    conductorPlan: string,
+    matchedQuestion: { question: string; skeleton: string; keyMechanism: string } | null
+  ) => Promise<null>;
+
+  streamCode: (
+    session: SessionState,
+    utterance: string,
+    conductorPlan: string
+  ) => Promise<null>;
+
+  streamRescue: (
+    session: SessionState,
+    utterance: string,
+    conductorPlan: string,
+    matchedQuestion: { question: string; skeleton: string; keyMechanism: string } | null
+  ) => Promise<null>;
+
+  // Answer stream listeners
+  onAnswerToken: (cb: (token: string) => void) => () => void;
+  onAnswerDone:  (cb: () => void) => () => void;
+  onAnswerError: (cb: (err: string) => void) => () => void;
+
+  // Code stream listeners
+  onCodeToken: (cb: (token: string) => void) => () => void;
+  onCodeDone:  (cb: () => void) => () => void;
+  onCodeError: (cb: (err: string) => void) => () => void;
+
+  // Rescue stream listeners
+  onRescueToken: (cb: (token: string) => void) => () => void;
+  onRescueDone:  (cb: () => void) => () => void;
+  onRescueError: (cb: (err: string) => void) => () => void;
+}
+
 declare global {
   interface Window {
     electronAPI: ElectronAPI
+    alphaAPI: AlphaAPI
   }
 }
